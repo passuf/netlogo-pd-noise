@@ -22,6 +22,11 @@ globals [
   tit-for-tat-score
   unforgiving-score
   unknown-score
+  
+  ;;noise
+  noise-is-active?         ;;turn noise on and off
+  noise-prob-defect        ;;probability to flip a cooperate into a defect
+  noise-prob-cooperate     ;;probability to flig a defect into a cooperate
 ]
 
 turtles-own [
@@ -44,6 +49,7 @@ to setup
   clear-all
   store-initial-turtle-counts ;;record the number of turtles created for each strategy
   setup-turtles ;;setup the turtles and distribute them randomly
+  noise-setup ;;setup noise
   reset-ticks
 end
 
@@ -288,23 +294,38 @@ end
 ;;;Noise;;;
 ;;;;;;;;;;;
 
-;;add noise to environment
-to add-noise
-  ;;TODO: select noise according to slider
+;;read values from slider and store them
+to noise-setup
+  set noise-is-active? noise-active? 
+  set noise-prob-defect flip-defect-probability
+  set noise-prob-cooperate flip-cooperate-probability
   
-  ;;noise-defect
-  noise-cooperate
+  ;;set random seed
+  random-seed new-seed
 end
 
-;;always defect
-to noise-defect
-  set defect-now? true
-end
+;;changes the decision according to the noise setup
+to add-noise
+  ;;check if noise is activated
+  if (noise-is-active?) [
+    ;;check decision
+    ifelse (defect-now?)
+    [
+      if (random 100 <= noise-prob-defect)
+      [
+       ;;flip defect -> cooperate
+       set defect-now? false
+      ]
+    ]
+    [
+      if (random 100 <= noise-prob-cooperate)
+      [
+       ;;flip cooperate -> defect
+       set defect-now? true
+      ]
+    ]
+  ]
 
-
-;;always cooperate
-to noise-cooperate
-  set defect-now? false
 end
 
 
@@ -336,9 +357,9 @@ end
 ; See Info tab for full copyright and license.
 @#$#@#$#@
 GRAPHICS-WINDOW
-520
+580
 18
-855
+915
 374
 10
 10
@@ -503,7 +524,7 @@ n-unknown
 n-unknown
 0
 20
-9
+0
 1
 1
 NIL
@@ -534,6 +555,57 @@ NIL
 NIL
 NIL
 NIL
+1
+
+SWITCH
+317
+21
+467
+54
+noise-active?
+noise-active?
+0
+1
+-1000
+
+SLIDER
+317
+65
+525
+98
+flip-defect-probability
+flip-defect-probability
+0
+100
+1
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+317
+97
+525
+130
+flip-cooperate-probability
+flip-cooperate-probability
+0
+100
+1
+1
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+318
+145
+542
+295
+flip-defect-probability:\nchance that a \"defect\" will be flipped to a \"cooperate\"\n\nflip-cooperate-probability:\nchance that a \"cooperate will be flipped to a \"defect\"
+12
+0.0
 1
 
 @#$#@#$#@
