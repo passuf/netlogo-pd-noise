@@ -157,6 +157,9 @@ to select-action ;;turtle procedure
   if strategy = "tit-for-tat" [ tit-for-tat ]
   if strategy = "unforgiving" [ unforgiving ]
   if strategy = "unknown" [ unknown ]
+  
+  ;;add noise to the game
+  add-noise
 end
 
 to play-a-round ;;turtle procedure
@@ -281,6 +284,30 @@ to unknown-history-update
 end
 
 
+;;;;;;;;;;;
+;;;Noise;;;
+;;;;;;;;;;;
+
+;;add noise to environment
+to add-noise
+  ;;TODO: select noise according to slider
+  
+  ;;noise-defect
+  noise-cooperate
+end
+
+;;always defect
+to noise-defect
+  set defect-now? true
+end
+
+
+;;always cooperate
+to noise-cooperate
+  set defect-now? false
+end
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;Plotting Procedures;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -309,13 +336,13 @@ end
 ; See Info tab for full copyright and license.
 @#$#@#$#@
 GRAPHICS-WINDOW
-303
-8
-733
-459
+520
+18
+855
+374
 10
 10
-20.0
+15.5
 1
 10
 1
@@ -353,10 +380,10 @@ NIL
 1
 
 PLOT
-8
-330
-292
-547
+9
+416
+748
+792
 Average Payoff
 Iterations
 Ave Payoff
@@ -476,17 +503,17 @@ n-unknown
 n-unknown
 0
 20
-10
+9
 1
 1
 NIL
 HORIZONTAL
 
 TEXTBOX
-12
-175
-178
-315
+19
+261
+185
+401
       PAYOFF:\n             Partner    \nTurtle    C       D\n-------------------------\n    C        3      0  \n-------------------------\n    D        5      1\n-------------------------\n(C = Cooperate, D = Defect)
 11
 0.0
