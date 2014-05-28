@@ -297,8 +297,8 @@ end
 ;;read values from slider and store them
 to noise-setup
   set noise-is-active? noise-active? 
-  set noise-prob-defect flip-defect-probability
-  set noise-prob-cooperate flip-cooperate-probability
+  set noise-prob-defect flip-from-defect-to-cooperate
+  set noise-prob-cooperate flip-from-cooperate-to-defect
   
   ;;set random seed
   random-seed new-seed
@@ -357,10 +357,10 @@ end
 ; See Info tab for full copyright and license.
 @#$#@#$#@
 GRAPHICS-WINDOW
-580
-18
-915
-374
+635
+22
+970
+378
 10
 10
 15.5
@@ -571,13 +571,13 @@ noise-active?
 SLIDER
 317
 65
-525
+581
 98
-flip-defect-probability
-flip-defect-probability
+flip-from-defect-to-cooperate
+flip-from-defect-to-cooperate
 0
 100
-1
+20
 1
 1
 NIL
@@ -586,13 +586,13 @@ HORIZONTAL
 SLIDER
 317
 97
-525
+581
 130
-flip-cooperate-probability
-flip-cooperate-probability
+flip-from-cooperate-to-defect
+flip-from-cooperate-to-defect
 0
 100
-1
+20
 1
 1
 NIL
@@ -603,7 +603,7 @@ TEXTBOX
 145
 542
 295
-flip-defect-probability:\nchance that a \"defect\" will be flipped to a \"cooperate\"\n\nflip-cooperate-probability:\nchance that a \"cooperate will be flipped to a \"defect\"
+flip-from-defect-to-cooperate:\nchance that a \"defect\" will be flipped to a \"cooperate\"\n\nflip-from-cooperate-to-defect:\nchance that a \"cooperate will be flipped to a \"defect\"
 12
 0.0
 1
