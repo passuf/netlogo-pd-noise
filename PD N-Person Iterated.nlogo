@@ -6,6 +6,8 @@ globals [
   num-tit-for-tat
   num-unforgiving
   num-unknown
+  num-generous-tit-for-tat
+  num-contrite-tit-for-tat
 
   ;;number of interactions by each strategy
   num-random-games
@@ -14,6 +16,8 @@ globals [
   num-tit-for-tat-games
   num-unforgiving-games
   num-unknown-games
+  num-generous-tit-for-tat-games
+  num-contrite-tit-for-tat-games
 
   ;;total score of all turtles playing each strategy
   random-score
@@ -22,6 +26,8 @@ globals [
   tit-for-tat-score
   unforgiving-score
   unknown-score
+  generous-tit-for-tat-score
+  contrite-tit-for-tat-score
   
   ;;noise
   noise-is-active?         ;;turn noise on and off
@@ -38,6 +44,9 @@ turtles-own [
   partner           ;;WHO of my partner (nobody if not partnered)
   partner-history   ;;a list containing information about past interactions
                     ;;with other turtles (indexed by WHO values)
+                    
+  ;;CTFT-own
+  defect-last? ;;keep track of last move to find out if there was noise
 ]
 
 
@@ -64,6 +73,8 @@ to store-initial-turtle-counts
   set num-tit-for-tat n-tit-for-tat
   set num-unforgiving n-unforgiving
   set num-unknown n-unknown
+  set num-generous-tit-for-tat n-GTFT
+  set num-contrite-tit-for-tat n-CTFT
 end
 
 ;;setup the turtles and distribute them randomly
@@ -80,6 +91,8 @@ to make-turtles
   crt num-tit-for-tat [ set strategy "tit-for-tat" set color lime ]
   crt num-unforgiving [ set strategy "unforgiving" set color turquoise - 1 ]
   crt num-unknown [set strategy "unknown" set color magenta ]
+  crt num-generous-tit-for-tat [set strategy "generous-tit-for-tat" set color green ]
+  crt num-contrite-tit-for-tat [set strategy "contrite-tit-for-tat" set color yellow set defect-last? false set defect-now? false ]
 end
 
 ;;set the variables that all turtles share
@@ -163,6 +176,8 @@ to select-action ;;turtle procedure
   if strategy = "tit-for-tat" [ tit-for-tat ]
   if strategy = "unforgiving" [ unforgiving ]
   if strategy = "unknown" [ unknown ]
+  if strategy = "generous-tit-for-tat" [ generous-tit-for-tat ]
+  if strategy = "contrite-tit-for-tat" [ contrite-tit-for-tat ]
   
   ;;add noise to the game
   add-noise
@@ -200,6 +215,8 @@ to update-history
   if strategy = "tit-for-tat" [ tit-for-tat-history-update ]
   if strategy = "unforgiving" [ unforgiving-history-update ]
   if strategy = "unknown" [ unknown-history-update ]
+  if strategy = "generous-tit-for-tat" [ generous-tit-for-tat-history-update ]
+  if strategy = "contrite-tit-for-tat" [ contrite-tit-for-tat-history-update ]
 end
 
 
@@ -290,13 +307,62 @@ to unknown-history-update
 end
 
 
+;;Generous Tit-for-Tat, cooperates 10% of the time that it would otherwise defect.
+to generous-tit-for-tat
+  set num-generous-tit-for-tat-games num-generous-tit-for-tat-games + 1
+  set partner-defected? item ([who] of partner) partner-history
+  ifelse (partner-defected?) [
+    ;;be generous in 10% of the cases you would defect
+    ifelse (random 100 <= 10) [
+         set defect-now? false
+       ] [
+         set defect-now? true
+       ]
+  ] [
+    set defect-now? false
+  ]
+end
+
+to generous-tit-for-tat-history-update
+  set partner-history
+    (replace-item ([who] of partner) partner-history partner-defected?)
+end
+
+
+;;Contrite Tit-for-Tat
+to contrite-tit-for-tat
+  set num-contrite-tit-for-tat-games num-contrite-tit-for-tat-games + 1
+  set partner-defected? item ([who] of partner) partner-history
+  
+  ifelse (defect-now? and not defect-last?) [
+    ;;there was an accidental defect due to noise, be contrite
+    set defect-now? false
+    set defect-last? false
+  ] [
+    ;;normal TFT
+    ifelse (partner-defected?) [
+      set defect-now? true
+      set defect-last? true
+    ] [
+      set defect-now? false
+      set defect-last? false
+    ]
+  ]
+  
+end
+
+to contrite-tit-for-tat-history-update
+  set partner-history
+    (replace-item ([who] of partner) partner-history partner-defected?)
+end
+
 ;;;;;;;;;;;
 ;;;Noise;;;
 ;;;;;;;;;;;
 
 ;;read values from slider and store them
 to noise-setup
-  set noise-is-active? noise-active? 
+  set noise-is-active? noise? 
   set noise-prob-defect flip-from-defect-to-cooperate
   set noise-prob-cooperate flip-from-cooperate-to-defect
   
@@ -341,6 +407,8 @@ to do-scoring
   set tit-for-tat-score  (calc-score "tit-for-tat" num-tit-for-tat)
   set unforgiving-score  (calc-score "unforgiving" num-unforgiving)
   set unknown-score  (calc-score "unknown" num-unknown)
+  set generous-tit-for-tat-score (calc-score "generous-tit-for-tat" num-generous-tit-for-tat)
+  set contrite-tit-for-tat-score (calc-score "contrite-tit-for-tat" num-contrite-tit-for-tat)
 end
 
 ;; returns the total score for a strategy if any turtles exist that are playing it
@@ -357,10 +425,10 @@ end
 ; See Info tab for full copyright and license.
 @#$#@#$#@
 GRAPHICS-WINDOW
-635
-22
-970
-378
+25
+422
+360
+778
 10
 10
 15.5
@@ -401,10 +469,10 @@ NIL
 1
 
 PLOT
-9
-416
-748
-792
+839
+39
+1578
+775
 Average Payoff
 Iterations
 Ave Payoff
@@ -422,6 +490,8 @@ PENS
 "tit-for-tat" 1.0 0 -13840069 true "" "if num-tit-for-tat-games > 0 [ plot tit-for-tat-score / (num-tit-for-tat-games) ]"
 "unforgiving" 1.0 0 -14835848 true "" "if num-unforgiving-games > 0 [ plot unforgiving-score / (num-unforgiving-games) ]"
 "unknown" 1.0 0 -5825686 true "" "if num-unknown-games > 0 [ plot unknown-score / (num-unknown-games) ]"
+"GTFT" 1.0 0 -955883 true "" "if num-generous-tit-for-tat-games > 0 [ plot generous-tit-for-tat-score / (num-generous-tit-for-tat-games) ]"
+"CTFT" 1.0 0 -1184463 true "" "if num-contrite-tit-for-tat-games > 0 [ plot contrite-tit-for-tat-score / (num-contrite-tit-for-tat-games) ]"
 
 BUTTON
 85
@@ -562,8 +632,8 @@ SWITCH
 21
 467
 54
-noise-active?
-noise-active?
+noise?
+noise?
 0
 1
 -1000
@@ -577,7 +647,7 @@ flip-from-defect-to-cooperate
 flip-from-defect-to-cooperate
 0
 100
-20
+5
 1
 1
 NIL
@@ -592,7 +662,7 @@ flip-from-cooperate-to-defect
 flip-from-cooperate-to-defect
 0
 100
-20
+5
 1
 1
 NIL
@@ -607,6 +677,36 @@ flip-from-defect-to-cooperate:\nchance that a \"defect\" will be flipped to a \"
 12
 0.0
 1
+
+SLIDER
+9
+182
+132
+215
+n-GTFT
+n-GTFT
+0
+20
+10
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+131
+182
+261
+215
+n-CTFT
+n-CTFT
+0
+20
+10
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
