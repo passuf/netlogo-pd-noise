@@ -8,6 +8,8 @@ globals [
   num-unknown
   num-generous-tit-for-tat
   num-contrite-tit-for-tat
+  num-prince
+  num-win-stay-lose-shift
 
   ;;number of interactions by each strategy
   num-random-games
@@ -18,6 +20,8 @@ globals [
   num-unknown-games
   num-generous-tit-for-tat-games
   num-contrite-tit-for-tat-games
+  num-prince-games
+  num-win-stay-lose-shift-games
 
   ;;total score of all turtles playing each strategy
   random-score
@@ -28,6 +32,8 @@ globals [
   unknown-score
   generous-tit-for-tat-score
   contrite-tit-for-tat-score
+  prince-score
+  win-stay-lose-shift-score
   
   ;;noise
   noise-is-active?         ;;turn noise on and off
@@ -45,8 +51,14 @@ turtles-own [
   partner-history   ;;a list containing information about past interactions
                     ;;with other turtles (indexed by WHO values)
                     
+  defect-last?      ;;needed to detect errors due to noise
+                    
   ;;CTFT-own
-  defect-last? ;;keep track of last move to find out if there was noise
+  be-contrite       ;;a list containing information about past interactions, true if last was a defect due to noise
+  
+  ;;Prince-own
+  state             ;;state represented by an integer
+  state-history     ;;a list which keeps current state for each partner
 ]
 
 
@@ -75,6 +87,8 @@ to store-initial-turtle-counts
   set num-unknown n-unknown
   set num-generous-tit-for-tat n-GTFT
   set num-contrite-tit-for-tat n-CTFT
+  set num-prince n-Prince
+  set num-win-stay-lose-shift n-WSLS
 end
 
 ;;setup the turtles and distribute them randomly
@@ -90,9 +104,11 @@ to make-turtles
   crt num-defect [ set strategy "defect" set color blue ]
   crt num-tit-for-tat [ set strategy "tit-for-tat" set color lime ]
   crt num-unforgiving [ set strategy "unforgiving" set color turquoise - 1 ]
-  crt num-unknown [set strategy "unknown" set color magenta ]
-  crt num-generous-tit-for-tat [set strategy "generous-tit-for-tat" set color green ]
-  crt num-contrite-tit-for-tat [set strategy "contrite-tit-for-tat" set color yellow set defect-last? false set defect-now? false ]
+  crt num-unknown [ set strategy "unknown" set color magenta ]
+  crt num-generous-tit-for-tat [ set strategy "generous-tit-for-tat" set color green ]
+  crt num-contrite-tit-for-tat [ set strategy "contrite-tit-for-tat" set color yellow set defect-last? false set defect-now? false ]
+  crt num-prince [ set strategy "prince" set color white set defect-last? false set defect-now? false ]
+  crt num-win-stay-lose-shift [ set strategy "win-stay-lose-shift" set color black set defect-last? false set defect-now? false ]
 end
 
 ;;set the variables that all turtles share
@@ -117,6 +133,12 @@ to setup-history-lists
 
   ;;give each turtle a copy of this list for tracking partner histories
   ask turtles [ set partner-history default-history ]
+  ask turtles [ set be-contrite default-history] ;;used for CTFT turtles
+  
+  ;;initialize state list for The Prince and WSLS.
+  let default-state [] ;;initialize empty list
+  repeat num-turtles [ set default-state (fput 0 default-state) ] ;;set state for each partner to 0
+  ask turtles [ set state-history default-state ] ;;assign default state to each turtle
 end
 
 
@@ -178,6 +200,8 @@ to select-action ;;turtle procedure
   if strategy = "unknown" [ unknown ]
   if strategy = "generous-tit-for-tat" [ generous-tit-for-tat ]
   if strategy = "contrite-tit-for-tat" [ contrite-tit-for-tat ]
+  if strategy = "prince" [ prince ]
+  if strategy = "win-stay-lose-shift" [ win-stay-lose-shift ]
   
   ;;add noise to the game
   add-noise
@@ -217,6 +241,8 @@ to update-history
   if strategy = "unknown" [ unknown-history-update ]
   if strategy = "generous-tit-for-tat" [ generous-tit-for-tat-history-update ]
   if strategy = "contrite-tit-for-tat" [ contrite-tit-for-tat-history-update ]
+  if strategy = "prince" [ prince-history-update ]
+  if strategy = "win-stay-lose-shift" [ win-stay-lose-shift-history-update ]
 end
 
 
@@ -313,7 +339,7 @@ to generous-tit-for-tat
   set partner-defected? item ([who] of partner) partner-history
   ifelse (partner-defected?) [
     ;;be generous in 10% of the cases you would defect
-    ifelse (random 100 <= 10) [
+    ifelse (random 100 < 10) [
          set defect-now? false
        ] [
          set defect-now? true
@@ -334,7 +360,7 @@ to contrite-tit-for-tat
   set num-contrite-tit-for-tat-games num-contrite-tit-for-tat-games + 1
   set partner-defected? item ([who] of partner) partner-history
   
-  ifelse (defect-now? and not defect-last?) [
+  ifelse (item ([who] of partner) be-contrite) [
     ;;there was an accidental defect due to noise, be contrite
     set defect-now? false
     set defect-last? false
@@ -354,7 +380,88 @@ end
 to contrite-tit-for-tat-history-update
   set partner-history
     (replace-item ([who] of partner) partner-history partner-defected?)
+    
+  ;;Check if next round with partner needs to be a contrite round
+  ifelse (not defect-last? and defect-now?)
+  [
+    set be-contrite
+      (replace-item ([who] of partner) be-contrite true)
+  ]
+  [
+    set be-contrite
+      (replace-item ([who] of partner) be-contrite false)
+  ]
 end
+
+
+;; The Prince
+to prince
+  set num-prince-games num-prince-games + 1
+  set partner-defected? item ([who] of partner) partner-history
+  set state item ([who] of partner) state-history
+  
+  ifelse (state = 0)
+  [
+    ;;Cooperation Loop
+    set defect-now? false
+    set defect-last? false
+  ]
+  [
+    ;;Sucker Explotation and Punishment Circuit
+    set defect-now? true
+    set defect-last? true
+  ]
+end
+
+to prince-history-update
+  set partner-history
+    (replace-item ([who] of partner) partner-history partner-defected?)
+    
+  ;;Update State
+  ifelse (partner-defected?)
+  [
+    set state (state + 1)
+  ]
+  [
+    if (state != 0) [ set state 1 ]
+  ]
+  if (state > 4) [ set state 0 ]
+  set state-history
+    (replace-item ([who] of partner) state-history state)
+end
+
+
+;; Win-Stay, Lose-Shift
+to win-stay-lose-shift
+  set num-win-stay-lose-shift-games num-win-stay-lose-shift-games + 1
+  set partner-defected? item ([who] of partner) partner-history
+  set state item ([who] of partner) state-history
+  
+  ifelse (state = 0)
+  [
+    ;;Win-Stay
+  ]
+  [
+    ;;Lose-Shift
+    ifelse (defect-now?)
+    [ set defect-now? false ]
+    [ set defect-now? true ]
+  ]
+end
+
+to win-stay-lose-shift-history-update
+  set partner-history
+    (replace-item ([who] of partner) partner-history partner-defected?)
+    
+  ifelse partner-defected? [
+    set state 1 ;;got 1 or 0 points, shift next time
+  ] [
+    set state 0 ;;got 3 or 5 points, stay next time
+  ]
+  set state-history
+    (replace-item ([who] of partner) state-history state)
+end
+
 
 ;;;;;;;;;;;
 ;;;Noise;;;
@@ -377,14 +484,14 @@ to add-noise
     ;;check decision
     ifelse (defect-now?)
     [
-      if (random 100 <= noise-prob-defect)
+      if (random 100 < noise-prob-defect)
       [
        ;;flip defect -> cooperate
        set defect-now? false
       ]
     ]
     [
-      if (random 100 <= noise-prob-cooperate)
+      if (random 100 < noise-prob-cooperate)
       [
        ;;flip cooperate -> defect
        set defect-now? true
@@ -409,6 +516,8 @@ to do-scoring
   set unknown-score  (calc-score "unknown" num-unknown)
   set generous-tit-for-tat-score (calc-score "generous-tit-for-tat" num-generous-tit-for-tat)
   set contrite-tit-for-tat-score (calc-score "contrite-tit-for-tat" num-contrite-tit-for-tat)
+  set prince-score (calc-score "prince" num-prince)
+  set win-stay-lose-shift-score (calc-score "win-stay-lose-shift" num-win-stay-lose-shift)
 end
 
 ;; returns the total score for a strategy if any turtles exist that are playing it
@@ -425,13 +534,13 @@ end
 ; See Info tab for full copyright and license.
 @#$#@#$#@
 GRAPHICS-WINDOW
-25
-422
-360
-778
+14
+416
+259
+659
 10
 10
-15.5
+10.1
 1
 10
 1
@@ -469,18 +578,18 @@ NIL
 1
 
 PLOT
-839
-39
-1578
-775
+654
+22
+1609
+759
 Average Payoff
 Iterations
 Ave Payoff
 0.0
-10.0
-0.0
-5.0
-true
+300000.0
+1.0
+3.0
+false
 true
 "" ""
 PENS
@@ -492,6 +601,8 @@ PENS
 "unknown" 1.0 0 -5825686 true "" "if num-unknown-games > 0 [ plot unknown-score / (num-unknown-games) ]"
 "GTFT" 1.0 0 -955883 true "" "if num-generous-tit-for-tat-games > 0 [ plot generous-tit-for-tat-score / (num-generous-tit-for-tat-games) ]"
 "CTFT" 1.0 0 -1184463 true "" "if num-contrite-tit-for-tat-games > 0 [ plot contrite-tit-for-tat-score / (num-contrite-tit-for-tat-games) ]"
+"The Prince" 1.0 0 -6459832 true "" "if num-prince-games > 0 [ plot prince-score / (num-prince-games) ]"
+"WSLS" 1.0 0 -2064490 true "" "if num-win-stay-lose-shift-games > 0 [ plot win-stay-lose-shift-score / (num-win-stay-lose-shift-games) ]"
 
 BUTTON
 85
@@ -634,7 +745,7 @@ SWITCH
 54
 noise?
 noise?
-0
+1
 1
 -1000
 
@@ -647,7 +758,7 @@ flip-from-defect-to-cooperate
 flip-from-defect-to-cooperate
 0
 100
-5
+1
 1
 1
 NIL
@@ -662,7 +773,7 @@ flip-from-cooperate-to-defect
 flip-from-cooperate-to-defect
 0
 100
-5
+1
 1
 1
 NIL
@@ -700,6 +811,36 @@ SLIDER
 215
 n-CTFT
 n-CTFT
+0
+20
+10
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+9
+214
+133
+247
+n-Prince
+n-Prince
+0
+20
+10
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+133
+215
+261
+248
+n-WSLS
+n-WSLS
 0
 20
 10
