@@ -435,31 +435,19 @@ end
 to win-stay-lose-shift
   set num-win-stay-lose-shift-games num-win-stay-lose-shift-games + 1
   set partner-defected? item ([who] of partner) partner-history
-  set state item ([who] of partner) state-history
   
-  ifelse (state = 0)
-  [
-    ;;Win-Stay
+  ;;shift if partner defected, stay otherwise
+  if (partner-defected?) [
+    ifelse (defect-last?)
+      [ set defect-last? false ]
+      [ set defect-last? true ]
   ]
-  [
-    ;;Lose-Shift
-    ifelse (defect-now?)
-    [ set defect-now? false ]
-    [ set defect-now? true ]
-  ]
+  set defect-now? defect-last?
 end
 
 to win-stay-lose-shift-history-update
   set partner-history
     (replace-item ([who] of partner) partner-history partner-defected?)
-    
-  ifelse partner-defected? [
-    set state 1 ;;got 1 or 0 points, shift next time
-  ] [
-    set state 0 ;;got 3 or 5 points, stay next time
-  ]
-  set state-history
-    (replace-item ([who] of partner) state-history state)
 end
 
 
@@ -745,7 +733,7 @@ SWITCH
 54
 noise?
 noise?
-1
+0
 1
 -1000
 
@@ -821,9 +809,9 @@ HORIZONTAL
 
 SLIDER
 9
-214
-133
-247
+215
+132
+248
 n-Prince
 n-Prince
 0
@@ -835,7 +823,7 @@ NIL
 HORIZONTAL
 
 SLIDER
-133
+132
 215
 261
 248
